@@ -1,127 +1,204 @@
-# Text Echo: learn releases with Qt 6 + FastAPI
+# Walkthrough: from your code to someone's desktop
 
-This small project connects a desktop app to GitHub Releases. The Qt app echoes your input; the FastAPI site offers platform downloads. On startup, the app checks for a newer release and offers a button that opens its download page.
+Use this after running the completed project. You don't need to configure a new
+repository: this one is already at https://github.com/IhorKDM/autoUpdate .
 
-## 1. Run the desktop app
+## 1. Follow one input through Qt
 
-Requires CMake 3.21+, a C++17 compiler, and Qt 6.5+ Widgets and Network.
+Open `desktop/main.cpp`. It creates a `QApplication`, then a `Window`, then starts
+Qt's event loop with `app.exec()`. The event loop receives clicks and key presses.
 
-On this Mac (Qt is already installed):
+Open `desktop/window.cpp`. The constructor puts labels, a text field and buttons
+in a `QVBoxLayout`. This connection defines what a click does:
 
-```sh
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/qt
-cmake --build build --config Release
-open build/TextEcho.app
+```cpp
+connect(show, &QPushButton::clicked, this, [entry, output] {
+    output->setText(entry->text());
+});
 ```
 
-Enter a value and click **Show text**, or press Enter. The output is plain text, including input containing HTML.
+That is Qt's **signal and slot** system: a button emits a signal, and a callback
+receives it. Return in the field also triggers the button. The output uses plain
+text, so `<b>Hello</b>` is displayed literally instead of treated as HTML.
 
-## 2. Run the website
+**Try:** change the Show text label, rebuild, and observe your change.
 
-```sh
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements-dev.txt
-export RELEASE_REPOSITORY=YOUR_USERNAME/YOUR_REPOSITORY
-python -m uvicorn web.main:app --reload
-```
+## 2. Follow one download through FastAPI
 
-Open http://127.0.0.1:8000. Run tests with `python -m pytest -q`.
-Replace the repository placeholder before running. Use a public GitHub repository for this example. No GitHub token belongs in the desktop app or frontend.
-
-## 3. Understand the vocabulary
-
-- **Commit**: a saved snapshot of your source code.
-- **Tag**: a name attached to one commit, for example `v0.1.0`. It identifies which code was released. A tag itself contains no compiled app.
-- **GitHub Actions**: GitHub's automation system. Workflow YAML files live in `.github/workflows/`.
-- **Runner**: the machine executing a workflow. We use macOS to build the Mac app and Windows to build the Windows app.
-- **Job**: a group of steps on one runner. Jobs can run in parallel; `needs` makes a job wait for successful dependencies.
-- **CI (continuous integration)**: automatically check changes. `ci.yml` tests the web backend and compiles the desktop app on both platforms for branch pushes and pull requests.
-- **Artifact**: a file saved from a workflow, such as a packaged ZIP. Workflow artifacts are intermediate files here; users download the assets attached to a GitHub Release.
-- **CD (continuous delivery/deployment)**: automate making checked builds available. `release.yml` publishes desktop downloads when you push a version tag. This project implements desktop release delivery; it does not deploy the FastAPI server.
-- **Release**: a user-facing GitHub page attached to a tag, with notes and downloadable assets.
-
-## 4. Put the project on GitHub
-
-Create an empty public GitHub repository (do not initialize it with a README). Then, from this folder:
-
-```sh
-git init -b main
-git add .
-git commit -m "Add Qt app, FastAPI site, and release workflows"
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
-git push -u origin main
-```
-
-Open the repository's **Actions** tab. The CI workflow should run. A green result means the web tests passed and both desktop targets compiled; it does not prove that the packaged app runs on every user's machine.
-
-Read `ci.yml` first: `on` selects the triggering event; `runs-on` selects a runner; `uses` runs an action; `run` runs a shell command. `strategy.matrix` repeats the same job on both operating systems.
-
-## 5. Publish the first release
-
-The version in `CMakeLists.txt` is `0.1.0`. The tag must match it:
-
-```sh
-git tag -a v0.1.0 -m "First release"
-git push origin v0.1.0
-```
-
-`release.yml` performs these steps:
-
-1. Validate the tag against the version and run the web tests.
-2. Build the app on macOS and Windows, embedding the repository name and version.
-3. Bundle Qt runtime dependencies with `macdeployqt` / `windeployqt`.
-4. Upload both ZIPs as workflow artifacts.
-5. Download both artifacts into the publication job, create a draft GitHub Release with its assets, then publish it.
-
-Only the publication job receives `contents: write`. The temporary `GITHUB_TOKEN` is supplied by GitHub, not stored in the project. Both builds must succeed before publication. If publication fails after a draft is created, inspect that draft and finish or delete it before rerunning the workflow.
-
-Assets have stable names: `TextEcho-macos-arm64.zip` and `TextEcho-windows-x64.zip`. Keep those names synchronized with `web/main.py`. Mac downloads target Apple Silicon; Windows downloads target x64. Intel Macs need an additional build or a universal build.
-
-## 6. Publish an update and see the prompt
-
-Install or launch the released **0.1.0** app. Then change the source as desired and change the CMake project version to **0.1.1**:
-
-```sh
-git add .
-git commit -m "Release 0.1.1"
-git push origin main
-git tag -a v0.1.1 -m "Text Echo 0.1.1"
-git push origin v0.1.1
-```
-
-Wait for the new release to publish, then reopen the old 0.1.0 app. It requests:
+Run the Python server using the README commands. Visit http://127.0.0.1:8000/docs
+and inspect `/download/{platform}`. With `platform=windows`, the handler returns
+an HTTP redirect to:
 
 ```text
-GET https://api.github.com/repos/OWNER/REPO/releases/latest
+https://github.com/IhorKDM/autoUpdate/releases/latest/download/TextEcho-windows-x64.zip
 ```
 
-The app compares the numeric release tag with its compiled version using `QVersionNumber`. Thus 0.1.10 is newer than 0.1.9. This learning project uses stable `vMAJOR.MINOR.PATCH` releases only. Do not move old release tags or mark an older release as latest.
+GitHub resolves `latest` to a release and serves its asset. Your Python server
+doesn't have to store the ZIP. The macOS route works the same way.
 
-If newer, the app shows **New version available** and an **Update — download new version** button. Clicking opens GitHub Releases; the person downloads, closes the old app, and replaces it. The website redirects to GitHub's latest-release asset URLs, so it needs no code changes per release. The first release must exist before download links work.
+`web/static/index.html`, `style.css` and `app.js` implement the browser UI.
+The browser demo uses `.textContent` to display your input. It is a preview of
+the desktop interaction; it does not run C++ in the browser.
 
-For a local build with update checks enabled:
+The same frontend is hosted at https://ihorkdm.github.io/autoUpdate/ . Pages
+serves static files only. `scripts/build_site.py` exports the frontend and writes
+`config.json`; this replaces the config endpoint when no Python server is present.
+
+**Try:** open the page, enter text in the preview, and use a download button.
+
+## 3. Read the CI workflow
+
+Open `.github/workflows/ci.yml` and compare it with the Actions tab on GitHub.
+
+- `on`: events that start automation: branch pushes and pull requests.
+- `jobs`: independent groups of commands.
+- `runs-on`: which computer runs those commands.
+- `steps`: commands/actions executed in order within a job.
+- `uses`: run a reusable action (checkout source, install Python, install Qt).
+- `run`: run a command, just as you would in a terminal.
+- `strategy.matrix`: repeat the desktop job on macOS and Windows.
+
+The website job installs Python dependencies and runs pytest. The desktop jobs
+compile and run CTest/Qt Test. The container job builds the FastAPI Docker image,
+starts a container and waits for its health endpoint.
+
+This is **continuous integration**: every proposed change is checked. A build on
+your Mac cannot prove that the Windows build works, which is why we use two runners.
+
+**Try:** make a deliberate failing assertion on a temporary branch and push it.
+Inspect the failed step, then fix it. Do not push that change to a release tag.
+
+## 4. Understand commits, tags, releases and artifacts
+
+A **commit** is a snapshot of source code. A **tag** gives one snapshot a name:
+`v0.1.0` identifies the source for that version. A **release** is the GitHub page
+with notes and downloadable files for that tag. An **artifact** is a file produced
+by automation; our temporary workflow artifacts later become release assets.
+
+```text
+commit abc123 ← tag v0.1.0
+                    ↓ build
+              release v0.1.0
+               ├── macOS ZIP
+               ├── Windows ZIP
+               └── SHA256SUMS.txt
+```
+
+The version is declared once in `CMakeLists.txt`. CMake embeds it in the executable
+and app bundle. The release workflow rejects a tag that doesn't match it.
+
+Version numbers here use `MAJOR.MINOR.PATCH`. For this exercise use patch changes
+for small fixes: `0.1.0`, `0.1.1`, `0.1.2`. Released versions must keep increasing.
+Never move an existing published tag to a different commit.
+
+## 5. Read the release workflow
+
+Open `.github/workflows/release.yml`. Its trigger is `push.tags: ['v*']`.
+A normal code push runs CI; a version-tag push runs the release workflow.
+
+1. **validate** checks the exact version and runs the Python tests.
+2. **package** builds and tests the desktop app on both platforms.
+3. `macdeployqt` / `windeployqt` copy the Qt runtime libraries and plugins.
+4. Both runners upload their ZIPs as workflow artifacts.
+5. **publish** waits for both packages, downloads them, computes SHA-256 checksums,
+   creates a draft with the assets, then makes the release public.
+
+The `needs` keyword enforces that order. If either platform fails, publication
+is skipped. Only the publish job has `contents: write`; GitHub provides its
+short-lived `GITHUB_TOKEN`. No private token is embedded in downloads.
+
+ZIPs must include dependencies. An `.exe` alone will not run on a machine without
+Qt. On Windows, users must extract the whole folder, not just the executable.
+
+This is **continuous delivery** for the desktop app: a tag causes checked packages
+to be built and made available. It does not install new code on people's machines.
+
+## 6. Read website CD
+
+Open `.github/workflows/pages.yml`. Successful CI on `main` triggers it. It exports
+the frontend, uploads a Pages artifact, and deploys it. The deployment job uses
+`pages: write` and an OIDC identity token instead of a permanent deployment key.
+
+This is **continuous deployment**: a successful code change updates the live
+frontend automatically. Desktop releases and website deployment are distinct:
+you can change the website without publishing a desktop version.
+
+To host the actual Python server on Render, create a Blueprint from this repo
+using `render.yaml`. It selects a free Python web service, health checks, and
+automatic redeployment after repository checks pass. This requires your Render
+account and is not the GitHub Pages deployment. Free services can sleep while idle.
+Alternatively deploy the Dockerfile on your chosen Python/container host.
+
+## 7. Follow the desktop update check
+
+`Window::checkForUpdates()` asynchronously requests:
+
+```text
+GET https://api.github.com/repos/IhorKDM/autoUpdate/releases/latest
+```
+
+The desktop remains usable during the request. `desktop/release.cpp` parses the
+result. It checks that:
+
+- the release is stable and public;
+- the tag has the expected `vMAJOR.MINOR.PATCH` format;
+- the version is newer than the compiled app version;
+- the matching platform ZIP exists;
+- its URL points to the expected GitHub repository and release.
+
+Numeric comparison matters: `0.1.10` is newer than `0.1.9`; string comparison can
+get that wrong. We use `QVersionNumber`.
+
+A newer release displays an update button. Clicking opens that exact version's
+ZIP. The user quits the old app and replaces it. There is no automatic in-place
+installation. GitHub API rate limits or an unavailable connection produce a retry
+message; they do not stop the app's main function.
+
+**Try:** launch version 0.1.0 after 0.1.1 is published. Then launch 0.1.1.
+The first should offer an update; the second should report no newer compatible
+release. Both release assets remain available from their tag pages.
+
+## 8. Publish your next version
+
+Make a small change, set the CMake version to the next unused value, and test:
 
 ```sh
-cmake -S . -B build -DRELEASE_REPOSITORY=YOUR_USERNAME/YOUR_REPOSITORY
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release
+ctest --test-dir build -C Release --output-on-failure
+.venv/bin/python -m pytest -q
 ```
 
-Offline errors and API limits do not prevent normal use. The app tries again next launch. GitHub's public API is rate limited; large deployments should use cached release metadata on their own server.
+For example, after 0.1.1:
 
-## 7. What a fully automatic updater adds
+```sh
+git add .
+git commit -m "Release 0.1.2"
+git push origin main
+# Check CI in GitHub Actions before pushing your release tag.
+git tag -a v0.1.2 -m "Text Echo 0.1.2"
+git push origin v0.1.2
+```
 
-This example detects updates and opens a download; it does not replace its own executable. A production updater needs signed update metadata, package verification, an external installer/helper, handling for running files and permissions, and rollback on failure. macOS and Windows need different installation strategies. A useful later lesson is integrating an established updater per platform.
+Inspect Actions, the release assets, and the website download. Keep an old copy
+of the app to test the update prompt. A release is successful when users can
+actually download and run it, not just when a workflow starts.
 
-The example packages are unsigned. For general distribution, add macOS Developer ID signing and notarization, and Windows code signing, before publishing. Also validate the packaged downloads on clean machines and include required Qt license notices. Windows users may need the matching Microsoft Visual C++ runtime if it is not available from packaging.
+## 9. Limits and the next lesson
 
-## 8. Deploying the website is a separate pipeline
+These learning packages don't have trusted developer signatures or notarization.
+The macOS bundle is ad-hoc signed for integrity. Windows packages are unsigned.
+OS trust prompts are expected. Test on clean machines before wider distribution.
+The macOS build supports Apple Silicon; the Windows build supports x64.
 
-A Python host runs `python -m uvicorn web.main:app --host 0.0.0.0 --port PORT`, where `PORT` is the actual port your provider specifies. Set `RELEASE_REPOSITORY` in its environment and install `requirements.txt`. Configure HTTPS and provider-specific deployment credentials there. The host can redeploy from `main`; that deployment is independent from releasing desktop versions. A concrete website CD workflow depends on which Python hosting provider you choose.
+An in-place updater is a separate project: signed update metadata, verified
+packages, an installer/helper outside the running app, rollback, and platform
+permissions. A useful next lesson is integrating established platform updaters
+and adding signing credentials as GitHub secrets.
 
 ## References
 
-- GitHub Actions syntax: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
-- Qt macOS deployment: https://doc.qt.io/qt-6/macos-deployment.html
-- Qt Windows deployment: https://doc.qt.io/qt-6/windows-deployment.html
-- Qt setup action: https://github.com/jurplel/install-qt-action
+- GitHub Actions: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+- GitHub Pages workflows: https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages
+- Qt deployment: https://doc.qt.io/qt-6/macos-deployment.html and https://doc.qt.io/qt-6/windows-deployment.html
+- Render Blueprints: https://render.com/docs/blueprint-spec

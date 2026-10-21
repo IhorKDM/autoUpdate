@@ -38,5 +38,5 @@ jobs:
           docker build -t text-echo-web .
           docker run -d --name web -p 127.0.0.1:8000:8000 text-echo-web
           trap 'docker logs web; docker rm -f web' EXIT
-          curl --fail --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:8000/health
+          curl --fail --retry 15 --retry-all-errors --retry-delay 1 --max-time 5 http://127.0.0.1:8000/health
           curl --fail http://127.0.0.1:8000/config.json
