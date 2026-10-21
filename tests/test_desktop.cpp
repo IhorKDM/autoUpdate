@@ -37,6 +37,29 @@ private slots:
         window.findChild<QPushButton *>("show")->click();
         QVERIFY(output->text().isEmpty());
     }
+    void showsBothFieldsIndependently() {
+        Window window({}, {}, false);
+        auto *first = window.findChild<QLineEdit *>("entry");
+        auto *second = window.findChild<QLineEdit *>("secondEntry");
+        auto *firstOutput = window.findChild<QLabel *>("output");
+        auto *secondOutput = window.findChild<QLabel *>("secondOutput");
+        QVERIFY(second);
+        QVERIFY(secondOutput);
+        first->setText("First message");
+        second->setText("<b>Second message</b> & Qt");
+        window.findChild<QPushButton *>("show")->click();
+        QCOMPARE(firstOutput->text(), first->text());
+        QCOMPARE(secondOutput->text(), second->text());
+        QCOMPARE(secondOutput->textFormat(), Qt::PlainText);
+        second->setText("Changed through Enter");
+        QTest::keyClick(second, Qt::Key_Return);
+        QCOMPARE(secondOutput->text(), second->text());
+        QCOMPARE(firstOutput->text(), QString("First message"));
+        second->clear();
+        QTest::keyClick(first, Qt::Key_Return);
+        QVERIFY(secondOutput->text().isEmpty());
+        QCOMPARE(firstOutput->text(), QString("First message"));
+    }
     void numericVersionComparison() {
         QVERIFY(!parseRelease(releaseJson("v0.1.10"), "learner/demo", "0.1.9", platformAssetName()).downloadUrl.isEmpty());
         QVERIFY(parseRelease(releaseJson(), "learner/demo", "0.1.1", platformAssetName()).downloadUrl.isEmpty());

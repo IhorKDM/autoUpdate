@@ -20,14 +20,21 @@ Window::Window(QString repository, QUrl apiUrl, bool checkOnStart)
     auto *title = new QLabel("Text Echo");
     title->setStyleSheet("font-size: 26px; font-weight: bold");
     layout->addWidget(title);
-    layout->addWidget(new QLabel("Type a message below. Press Enter to show it."));
-    auto *label = new QLabel("Enter some text:");
+    layout->addWidget(new QLabel("Type two messages below. Press Enter to show them."));
+    auto *label = new QLabel("First text:");
     layout->addWidget(label);
     auto *entry = new QLineEdit;
     entry->setObjectName("entry");
     entry->setPlaceholderText("Hello from Qt 6");
     label->setBuddy(entry);
     layout->addWidget(entry);
+    auto *secondLabel = new QLabel("Second text:");
+    layout->addWidget(secondLabel);
+    auto *secondEntry = new QLineEdit;
+    secondEntry->setObjectName("secondEntry");
+    secondEntry->setPlaceholderText("Another message");
+    secondLabel->setBuddy(secondEntry);
+    layout->addWidget(secondEntry);
     auto *show = new QPushButton("Show text");
     show->setObjectName("show");
     layout->addWidget(show);
@@ -37,9 +44,22 @@ Window::Window(QString repository, QUrl apiUrl, bool checkOnStart)
     output->setWordWrap(true);
     output->setMinimumHeight(60);
     output->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    layout->addWidget(new QLabel("First output:"));
     layout->addWidget(output);
-    connect(show, &QPushButton::clicked, this, [entry, output] { output->setText(entry->text()); });
+    auto *secondOutput = new QLabel("Your second text will appear here.");
+    secondOutput->setObjectName("secondOutput");
+    secondOutput->setTextFormat(Qt::PlainText);
+    secondOutput->setWordWrap(true);
+    secondOutput->setMinimumHeight(60);
+    secondOutput->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    layout->addWidget(new QLabel("Second output:"));
+    layout->addWidget(secondOutput);
+    connect(show, &QPushButton::clicked, this, [entry, output, secondEntry, secondOutput] {
+        output->setText(entry->text());
+        secondOutput->setText(secondEntry->text());
+    });
     connect(entry, &QLineEdit::returnPressed, show, &QPushButton::click);
+    connect(secondEntry, &QLineEdit::returnPressed, show, &QPushButton::click);
     status_ = new QLabel;
     status_->setObjectName("updateStatus");
     status_->setWordWrap(true);
@@ -59,7 +79,7 @@ Window::Window(QString repository, QUrl apiUrl, bool checkOnStart)
     auto *version = new QLabel("Version " APP_VERSION " · macOS / Windows");
     layout->addWidget(version);
     if (checkOnStart) QTimer::singleShot(0, this, &Window::checkForUpdates);
-    resize(480, 420);
+    resize(480, 610);
 }
 
 void Window::checkForUpdates() {

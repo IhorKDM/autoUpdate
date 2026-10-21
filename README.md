@@ -4,6 +4,9 @@ A complete learning project: C++ / Qt 6 desktop app, a Python / FastAPI website,
 JavaScript + CSS frontend, GitHub Actions CI, tag-triggered desktop releases,
 and startup update notifications.
 
+The app has two text fields and two separate outputs. Click **Show text**, or
+press Enter in either field, to display both values.
+
 - **FastAPI website:** http://167.99.87.65/
 - **Static mirror:** https://ihorkdm.github.io/autoUpdate/
 - **Downloads:** https://github.com/IhorKDM/autoUpdate/releases/latest
@@ -96,10 +99,10 @@ Change the version in `CMakeLists.txt`, commit, push, and tag that commit:
 
 ```sh
 git add .
-git commit -m "Release 0.1.2"
+git commit -m "Release 0.1.3"
 git push origin main
-git tag -a v0.1.2 -m "Text Echo 0.1.2"
-git push origin v0.1.2
+git tag -a v0.1.3 -m "Text Echo 0.1.3"
+git push origin v0.1.3
 ```
 
 Use your next unpublished version. Tags must match the CMake version exactly.

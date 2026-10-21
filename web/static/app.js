@@ -2,6 +2,7 @@
 document.querySelector('#demo-form').addEventListener('submit', (event) => {
   event.preventDefault();
   document.querySelector('#demo-output').textContent = document.querySelector('#demo-input').value;
+  document.querySelector('#demo-output-second').textContent = document.querySelector('#demo-input-second').value;
 });
 
 async function loadRelease() {
