@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="A tiny Qt desktop app, with a complete GitHub Actions release pipeline. Download Text Echo for macOS or Windows.">
+  <title>Text Echo — type it, see it</title>
+  <link rel="stylesheet" href="./static/style.css"><script src="./static/app.js" defer></script>
+</head>
+<body>
+  <main>
+    <header><a class="wordmark" href="./">te<span>↵</span></a><a class="source" href="https://github.com/IhorKDM/autoUpdate">View source ↗</a></header>
+    <section class="hero" aria-labelledby="title">
+      <div class="intro"><p class="eyebrow"><span class="dot"></span> SMALL APP. COMPLETE PIPELINE.</p>
+        <h1 id="title">Type it.<br><em>See it.</em></h1>
+        <p class="description">A little desktop app with one simple purpose.<br>Enter your words, press a button, and watch them appear.</p>
+        <nav class="downloads" aria-label="Download Text Echo">
+          <a class="download primary" data-platform="macos" href="https://github.com/IhorKDM/autoUpdate/releases/latest/download/TextEcho-macos-arm64.zip"><span>↓ &nbsp; Download for macOS</span><small>Apple Silicon · ZIP</small></a>
+          <a class="download secondary" data-platform="windows" href="https://github.com/IhorKDM/autoUpdate/releases/latest/download/TextEcho-windows-x64.zip"><span>↓ &nbsp; Download for Windows</span><small>64-bit · ZIP</small></a>
+        </nav>
+        <p class="release" id="release-status" role="status">Checking the latest release…</p>
+      </div>
+      <div class="demo" aria-label="Interactive preview of Text Echo">
+        <div class="titlebar"><div class="traffic" aria-hidden="true"><i></i><i></i><i></i></div><span>Text Echo</span><span class="preview">WEB PREVIEW</span></div>
+        <form id="demo-form"><label for="demo-input">Enter some text</label><input id="demo-input" placeholder="Hello, world." value="Hello, world." maxlength="500"><button type="submit">Show text <span aria-hidden="true">↵</span></button><div class="output"><span class="eyebrow">OUTPUT</span><p id="demo-output" aria-live="polite">Your text will appear here.</p></div><p class="demo-foot">One field. One button. Your words.</p></form>
+      </div>
+    </section>
+    <section class="details" aria-label="About the app"><article><span>01 / NATIVE</span><h2>Made for your desktop</h2><p>C++ and Qt 6. A small native window that does exactly what you expect.</p></article><article><span>02 / UPDATED</span><h2>A heads-up, automatically</h2><p>Open the app and it checks for a new version. The Update button opens the latest download.</p></article><article><span>03 / OPEN</span><h2>See how it ships</h2><p>Every release is built by GitHub Actions. Follow the source from commit to download.</p></article></section>
+    <aside>Early learning release: downloads are unsigned. macOS builds support Apple Silicon. Updates download a ZIP; quit the app and replace the old copy to install.</aside>
+    <footer><span>TEXT ECHO <span class="footer-dot">/</span> BUILT TO LEARN</span><a href="https://github.com/IhorKDM/autoUpdate/releases">Release notes ↗</a></footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,42 @@
+name: CI
+on:
+  push:
+    branches: ['**']
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  website:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements-dev.txt
+      - run: python -m pytest -q
+  desktop:
+    strategy:
+      matrix:
+        os: [macos-15, windows-2022]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          cache: true
+      - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - run: cmake --build build --config Release
+      - run: ctest --test-dir build -C Release --output-on-failure
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and smoke-test the FastAPI image
+        run: |
+          docker build -t text-echo-web .
+          docker run -d --name web -p 127.0.0.1:8000:8000 text-echo-web
+          trap 'docker logs web; docker rm -f web' EXIT
+          curl --fail --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:8000/health
+          curl --fail http://127.0.0.1:8000/config.json

@@ -1,0 +1,25 @@
+cmake_minimum_required(VERSION 3.21)
+project(TextEcho VERSION 0.1.0 LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Widgets Network)
+set(RELEASE_REPOSITORY "IhorKDM/autoUpdate" CACHE STRING "Public GitHub owner/repository")
+add_library(text_echo STATIC desktop/window.cpp desktop/release.cpp)
+target_include_directories(text_echo PUBLIC desktop)
+target_link_libraries(text_echo PUBLIC Qt6::Widgets Qt6::Network)
+target_compile_definitions(text_echo PUBLIC APP_VERSION="${PROJECT_VERSION}" RELEASE_REPOSITORY="${RELEASE_REPOSITORY}")
+qt_add_executable(TextEcho MACOSX_BUNDLE desktop/main.cpp)
+target_link_libraries(TextEcho PRIVATE text_echo)
+set_target_properties(TextEcho PROPERTIES
+    MACOSX_BUNDLE_GUI_IDENTIFIER "com.ihorkdm.textecho"
+    MACOSX_BUNDLE_BUNDLE_NAME "Text Echo"
+    MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+    MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}")
+include(CTest)
+if(BUILD_TESTING)
+    find_package(Qt6 REQUIRED COMPONENTS Test)
+    qt_add_executable(desktop_tests tests/test_desktop.cpp)
+    set_target_properties(desktop_tests PROPERTIES AUTOMOC ON)
+    target_link_libraries(desktop_tests PRIVATE text_echo Qt6::Test)
+    add_test(NAME desktop COMMAND desktop_tests -platform offscreen)
+endif()

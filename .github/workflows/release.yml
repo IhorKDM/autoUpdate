@@ -1,0 +1,83 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Require tag to match the CMake version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python - <<'PY'
+          import os, pathlib, re
+          source = pathlib.Path('CMakeLists.txt').read_text()
+          version = re.search(r'project\(TextEcho VERSION (\d+\.\d+\.\d+)', source).group(1)
+          assert os.environ['RELEASE_TAG'] == f'v{version}', 'Tag must match project version'
+          PY
+      - run: pip install -r requirements-dev.txt
+      - run: python -m pytest -q
+  package:
+    needs: validate
+    strategy:
+      matrix:
+        os: [macos-15, windows-2022]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          cache: true
+      - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DRELEASE_REPOSITORY=${{ github.repository }}
+      - run: cmake --build build --config Release
+      - run: ctest --test-dir build -C Release --output-on-failure
+      - name: Package macOS Apple Silicon
+        if: runner.os == 'macOS'
+        run: |
+          python scripts/package_notices.py build/TextEcho.app/Contents/Resources
+          macdeployqt build/TextEcho.app -codesign=-
+          codesign --verify --deep --strict build/TextEcho.app
+          ditto -c -k --sequesterRsrc --keepParent build/TextEcho.app TextEcho-macos-arm64.zip
+      - name: Package Windows x64
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path package
+          Copy-Item build/Release/TextEcho.exe package/
+          python scripts/package_notices.py package
+          windeployqt --release --compiler-runtime package/TextEcho.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Compress-Archive -Path package/* -DestinationPath TextEcho-windows-x64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ runner.os }}
+          path: TextEcho-*.zip
+          if-no-files-found: error
+  publish:
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: package-*
+          merge-multiple: true
+          path: artifacts
+      - name: Publish both downloads together
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          (cd artifacts && sha256sum *.zip > SHA256SUMS.txt)
+          gh release create "$RELEASE_TAG" artifacts/*.zip artifacts/SHA256SUMS.txt --verify-tag --draft --title "Text Echo $RELEASE_TAG" --generate-notes
+          gh release edit "$RELEASE_TAG" --draft=false --latest

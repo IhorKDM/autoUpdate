@@ -1,0 +1,8 @@
+services:
+  web:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      RELEASE_REPOSITORY: IhorKDM/autoUpdate
+    restart: unless-stopped
