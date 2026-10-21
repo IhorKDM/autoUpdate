@@ -4,7 +4,8 @@ A complete learning project: C++ / Qt 6 desktop app, a Python / FastAPI website,
 JavaScript + CSS frontend, GitHub Actions CI, tag-triggered desktop releases,
 and startup update notifications.
 
-- **Website:** https://ihorkdm.github.io/autoUpdate/
+- **FastAPI website:** http://167.99.87.65/
+- **Static mirror:** https://ihorkdm.github.io/autoUpdate/
 - **Downloads:** https://github.com/IhorKDM/autoUpdate/releases/latest
 - **Builds:** https://github.com/IhorKDM/autoUpdate/actions
 - **Lesson:** [Step-by-step walkthrough](docs/WALKTHROUGH.md)
@@ -51,7 +52,7 @@ assets, and the exported frontend.
 ```text
 Push / pull request → CI: Python tests + Qt builds/tests + Docker smoke test
                     ↓ (successful push to main)
-               Deploy frontend to GitHub Pages
+               Deploy FastAPI to DigitalOcean + frontend to GitHub Pages
 
 Push vX.Y.Z tag → validate version + tests → macOS + Windows build/test/package
                                            ↓ (both succeed)
@@ -63,6 +64,8 @@ Push vX.Y.Z tag → validate version + tests → macOS + Windows build/test/pack
 - `.github/workflows/ci.yml`: continuous integration.
 - `.github/workflows/release.yml`: tag-triggered release delivery.
 - `.github/workflows/pages.yml`: frontend continuous deployment after successful CI.
+- `.github/workflows/deploy-server.yml`: deploy the tested commit to DigitalOcean.
+- `compose.production.yaml`: the server container, with health checks and image rollback.
 - `render.yaml`: optional deployment of the **Python backend** on Render; needs a
   Render account. GitHub Pages serves the frontend only; it does not run FastAPI.
 
@@ -70,6 +73,22 @@ The same frontend runs on FastAPI and GitHub Pages. Pages uses a generated
 `config.json`; FastAPI generates it from `RELEASE_REPOSITORY` (default:
 `IhorKDM/autoUpdate`). Build frontend files with
 `.venv/bin/python scripts/build_site.py site-dist`.
+
+## Server deployment
+
+The Python site runs on the DigitalOcean server at `http://167.99.87.65/`.
+Successful CI on main triggers the deployment workflow, which SSHes as `ihor`
+using a dedicated key restricted to the deployment command. The script only
+accepts a commit SHA on main and deploys the exact tested revision. Failed
+container health checks restore the previous image when one exists.
+
+Source lives in `/home/ihor/text-echo/source` on the server. The forced command is
+`/home/ihor/.local/lib/text-echo/deploy`, outside the Git checkout. GitHub stores
+the dedicated key and verified host key as encrypted Actions secrets; no private
+key is committed. Existing SSH credentials and services are preserved. The site
+uses port 80 on the supplied IP; a custom domain and HTTPS can be added later.
+
+See [server operations](docs/SERVER.md) for deployment and rollback commands.
 
 ## Release a new version
 

@@ -1,0 +1,17 @@
+name: text-echo
+services:
+  web:
+    image: ${TEXT_ECHO_IMAGE:-text-echo-web:local}
+    build: .
+    ports:
+      - "${TEXT_ECHO_PORT:-8080}:8000"
+    environment:
+      RELEASE_REPOSITORY: IhorKDM/autoUpdate
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
