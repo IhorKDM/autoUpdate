@@ -8,6 +8,7 @@
 #include <QPushButton>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <utility>
 
 Window::Window(QString repository, QUrl apiUrl, bool checkOnStart)
     : repository_(std::move(repository)), apiUrl_(std::move(apiUrl)) {
@@ -19,6 +20,7 @@ Window::Window(QString repository, QUrl apiUrl, bool checkOnStart)
     auto *title = new QLabel("Text Echo");
     title->setStyleSheet("font-size: 26px; font-weight: bold");
     layout->addWidget(title);
+    layout->addWidget(new QLabel("Type a message below. Press Enter to show it."));
     auto *label = new QLabel("Enter some text:");
     layout->addWidget(label);
     auto *entry = new QLineEdit;
